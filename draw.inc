@@ -1,1 +1,0 @@
-drawWorld PROTO
