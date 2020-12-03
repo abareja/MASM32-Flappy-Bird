@@ -4,26 +4,19 @@ option casemap:none
 
 include \masm32\include\msimg32.inc
 includelib \masm32\lib\msimg32.lib
-
 include \masm32\include\windows.inc
-
 include \masm32\include\user32.inc
 includelib \masm32\lib\user32.lib
-
 include \masm32\include\kernel32.inc
 includelib \masm32\lib\kernel32.lib
-
 include C:\masm32\include\gdi32.inc 
 includelib C:\masm32\lib\gdi32.lib
-
 include C:\masm32\include\masm32.inc
 includelib C:\masm32\lib\masm32.lib
 
-include \masm32\macros\macros.asm
-
 WinMain proto :DWORD
 Update proto
-Init proto
+Init proto :DWORD
 InitRand proto
 InitPipes proto
 NumbToStr proto :DWORD, :DWORD
@@ -36,9 +29,6 @@ Bird struct
 	x dd ?
 	y dd ?
 
-	startX dd ?
-	startY dd ?
-
 	velocityY dd ?
 	acceleration dd ?
 Bird ends
@@ -49,36 +39,35 @@ Ground struct
 Ground ends
 
 PipeSet struct
-	x dd ?
-	gapY dd ?
-	passed db ?
+	x dd 30 dup(?)
+	gapY dd 30 dup(?)
+	passed dd 4 dup(?)
 PipeSet ends
+
+.const
+	BACKGROUND_ID equ 1000
+	BIRD_ID equ 1001
+	GROUND_ID equ 1002
+	BUTTON_ID equ 1003
+	SCOREBOARD_ID equ 1004
+	PIPEUP_ID equ 1005
+	PIPEDOWN_ID equ 1006
+	NEWBADGE_ID equ 1007
 
 .data
 	ClassName db "WinClass", 0
 	AppName db "Flappy Bird By Adrian Bareja", 0
-	AppIcon db "bird.ico", 0
-
-	BirdBmpName db "resources\bird.bmp", 0
-	BackgroundBmpName db "resources\background.bmp", 0
-	GroundBmpName db "resources\ground.bmp", 0
-	BtnBmpName db "resources\button.bmp", 0
-	ScoreBoardBmpName db "resources\scoreboard.bmp", 0
-	PipeUpBmpName db "resources\pipe-up.bmp", 0
-	PipeDownBmpName db "resources\pipe-down.bmp", 0
-
 	FontSrc db "resources\FlappyBird.ttf", 0
 	FontName db "Flappy Bird Regular", 0
-	IDF_MYFONT byte "resources\Flappy.ttf"
 	ClassNameBtn db "BUTTON", 0
 	BtnText db "Restart", 0
 
-	MyBird Bird <120, 85, 500, 330, 500, 330, 0, 1>
+	MyBird Bird <120, 85, 500, 330, 0, 1>
 	MyGround1 Ground <0, 1200>
 	MyGround2 Ground <1200, 2400>
 
 	upForce dd -15
-	timerClock dd 4
+	timerClock dd 8
 	gameState db 1
 	bestScore dd 0
 	score dd 0
@@ -89,8 +78,14 @@ PipeSet ends
 	scoreText db "SCORE", 0
 	bestText db "BEST", 0
 	TimerID dd 1234
-	gapHeight dd 250
+	gapHeight dd 240
 	leftScreenEdge dd 6
+	MovingSpeed dd 6
+	PipesQnt dd 3
+	PipesStartPoint dd 2000
+	displayNewBadge db 0
+	scoreTextX dd 620
+	bestScoreTextX dd 620
 
 .data?
 	hInstance HINSTANCE ?
@@ -101,44 +96,63 @@ PipeSet ends
 	ScoreBoardBitmap dd ?
 	PipeUpBitmap dd ?
 	PipeDownBitmap dd ?
+	BtnBitmap dd ?
+	BadgeBitmap dd ?
+
 	RandSeed dd ?
 	RangeOfNumbers dd ?
-	PipeSetArr PipeSet <?>
+	PipeSetArr PipeSet 4 dup(<>)
 	buff db 11 dup(?)
+
+RGB MACRO red, green, blue
+    xor eax, eax
+    mov ah, blue
+    mov al, green
+    rol eax, 8
+    mov al, red
+ENDM
 
 .code
 	start:
-		invoke InitRand
-    	invoke Init
-    	invoke InitPipes
-
 		invoke WinMain, hInstance
 		invoke ExitProcess, eax
 
-		Init proc
+		Init proc hWnd:HWND
 			invoke GetModuleHandle, NULL
 			mov hInstance, eax
 
-			invoke LoadImage, NULL, addr BackgroundBmpName, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE
+			invoke LoadBitmap, hInstance, BACKGROUND_ID
 			mov BackgroundBitmap, eax
 
-			invoke LoadImage, NULL, addr BirdBmpName, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE or LR_CREATEDIBSECTION
+			invoke LoadBitmap, hInstance, BIRD_ID
 			mov BirdBitmap, eax
 
-			invoke LoadImage, NULL, addr GroundBmpName, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE or LR_CREATEDIBSECTION
+			invoke LoadBitmap, hInstance, GROUND_ID
 			mov GroundBitmap, eax
 
-			invoke LoadImage, NULL, addr ScoreBoardBmpName, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE or LR_CREATEDIBSECTION
+			invoke LoadBitmap, hInstance, SCOREBOARD_ID
 			mov ScoreBoardBitmap, eax
 
-			invoke LoadImage, NULL, addr ScoreBoardBmpName, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE or LR_CREATEDIBSECTION
-			mov ScoreBoardBitmap, eax
-
-			invoke LoadImage, NULL, addr PipeUpBmpName, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE or LR_CREATEDIBSECTION
+			invoke LoadBitmap, hInstance, PIPEUP_ID
 			mov PipeUpBitmap, eax
 
-			invoke LoadImage, NULL, addr PipeDownBmpName, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE or LR_CREATEDIBSECTION
+			invoke LoadBitmap, hInstance, PIPEDOWN_ID
 			mov PipeDownBitmap, eax
+
+			invoke LoadBitmap, hInstance, BUTTON_ID
+			mov BtnBitmap, eax
+
+			invoke LoadBitmap, hInstance, NEWBADGE_ID
+			mov BadgeBitmap, eax
+
+			invoke SetTimer, hWnd, TimerID, timerClock, NULL
+
+			invoke AddFontResourceEx, addr FontSrc, FR_PRIVATE, NULL
+
+			invoke CreateWindowEx, 0, addr ClassNameBtn, addr BtnText, WS_VISIBLE or WS_CHILD or BS_BITMAP or BS_OWNERDRAW, 535, 400, 130, 75, hWnd, NULL, hInstance, NULL
+			mov hWndRetryBtn, eax
+
+			invoke ShowWindow, hWndRetryBtn, SW_HIDE
 			ret
 		Init endp
 
@@ -152,13 +166,22 @@ PipeSet ends
 		InitRand endp
 
 		InitPipes proc
-			;mov eax, RangeOfNumbers
-			;call PseudoRandom
-	    	;add eax, 100
-	    	;add eax, gapHeight
+			mov ebx, 0
+			mov edx, PipesStartPoint
+			
+			.WHILE ebx < PipesQnt
+				mov eax, RangeOfNumbers
+				call PseudoRandom
+		    	add eax, 100
+		    	add eax, gapHeight
 
-	    	;mov PipeSet1.gapY, eax
-
+		    	mov [PipeSetArr + ebx * 8].x, edx
+		    	mov [PipeSetArr + ebx * 8].gapY, eax
+		    	mov [PipeSetArr + ebx * 8].passed, 0
+		    	
+				inc ebx
+				add edx, 522
+			.ENDW
 			ret
 		InitPipes endp
 
@@ -178,7 +201,7 @@ PipeSet ends
 			mov wc.lpszMenuName, NULL
 			mov wc.lpszClassName, offset ClassName
 
-			invoke LoadImage, NULL, addr AppIcon, IMAGE_ICON, 0, 0, LR_LOADTRANSPARENT or LR_LOADFROMFILE or LR_DEFAULTSIZE
+			invoke LoadIcon, hInstance, 8190
 
 			mov wc.hIcon, eax
 			mov wc.hIconSm, eax
@@ -209,8 +232,9 @@ PipeSet ends
 			LOCAL hbmBuffer:HBITMAP
 			LOCAL hbmOldBuffer:HBITMAP
 			LOCAL hFont:HFONT
+			LOCAL hFontSm:HFONT
 			Local hOldFont:HFONT
-			LOCAL pen:HPEN 
+			LOCAL pen:HPEN
 
 			invoke CreateCompatibleDC, hdc
 			mov hdcBuffer, eax
@@ -228,35 +252,36 @@ PipeSet ends
 			invoke CreateCompatibleDC, hdc
 			mov hdcMem, eax
 
-			invoke FillRect, hdcBuffer, addr rect, 0
-
 			invoke SelectObject, hdcMem, BackgroundBitmap
-
 			invoke BitBlt, hdcBuffer, 0, 0, rect.right, rect.bottom, hdcMem, 0, 0, SRCCOPY
-
-			;invoke  NumbToStr, PipeSet1.x, addr buff
-			;invoke TextOut, hdcBuffer, 10, 10, eax, 3
 
 			invoke CreateFont, 80, 0, 0, 0, FW_BOLD, 0, 0, 0, 0, 0, 0, 2, 0, addr FontName
 			mov hFont, eax
-
+			invoke CreateFont, 40, 0, 0, 0, 400, 0, 0, 0, 0, 0, 0, 2, 0, addr FontName
+			mov hFontSm, eax
 			invoke SelectObject, hdcBuffer, hFont
 			mov hOldFont, eax
 
 			;Drawing pipes
 
 			.IF gameState == 2 || gameState == 3
-				invoke SelectObject, hdcMem, PipeDownBitmap
-				RGB 255, 0, 0
-				;invoke TransparentBlt, hdcBuffer, PipeSet1.x, PipeSet1.gapY, 155, 600, hdcMem, 0, 0, 155, 600, eax
+				mov ebx, 0
 
-				invoke SelectObject, hdcMem, PipeUpBitmap
-				RGB 255, 0, 0
-				;mov ebx, PipeSet1.gapY
-				sub ebx, 600
-				sub ebx, gapHeight
+				.WHILE ebx < PipesQnt
+					invoke SelectObject, hdcMem, PipeDownBitmap
+					RGB 255, 0, 0
+					invoke TransparentBlt, hdcBuffer, [PipeSetArr + ebx * 8].x, [PipeSetArr + ebx * 8].gapY, 155, 600, hdcMem, 0, 0, 155, 600, eax
 
-				;invoke TransparentBlt, hdcBuffer, PipeSet1.x, ebx, 155, 600, hdcMem, 0, 0, 155, 600, eax
+					invoke SelectObject, hdcMem, PipeUpBitmap
+					RGB 255, 0, 0
+					mov edx, [PipeSetArr + ebx * 8].gapY
+					sub edx, 600
+					sub edx, gapHeight
+
+					invoke TransparentBlt, hdcBuffer, [PipeSetArr + ebx * 8].x, edx, 155, 600, hdcMem, 0, 0, 155, 600, eax
+
+					inc ebx
+				.ENDW
 			.ENDIF
 
 			;End of drawing Pipes
@@ -264,7 +289,6 @@ PipeSet ends
 			;Drawing Bird
 
 			invoke SelectObject, hdcMem, BirdBitmap
-
 			RGB 255, 0, 0
 			invoke TransparentBlt, hdcBuffer, MyBird.x, MyBird.y, MyBird.bWidth, MyBird.bHeight, hdcMem, 0, 0, MyBird.bWidth, MyBird.bHeight, eax
 
@@ -273,9 +297,7 @@ PipeSet ends
 			;Drawing Ground
 
 			invoke SelectObject, hdcMem, GroundBitmap
-
 			invoke BitBlt, hdcBuffer, MyGround1.startX, groundLevel, rect.right, rect.bottom, hdcMem, 0, 0, SRCCOPY
-
 			invoke BitBlt, hdcBuffer, MyGround2.startX, groundLevel, rect.right, rect.bottom, hdcMem, 0, 0, SRCCOPY
 
 			;End of drawing Ground
@@ -289,11 +311,12 @@ PipeSet ends
 			invoke SelectObject, hdcBuffer, pen
 
 			invoke BeginPath, hdcBuffer
+
 			.IF gameState == 1
 				invoke TextOut, hdcBuffer, 600, 100, addr startText, 10
 			.ELSEIF gameState == 2
 				invoke  NumbToStr, score, addr buff
-				invoke TextOut, hdcBuffer, 620, 50, eax, 2
+				invoke TextOut, hdcBuffer, scoreTextX, 50, eax, 2
 			.ELSEIF gameState == 3
 				invoke SelectObject, hdcMem, ScoreBoardBitmap
 
@@ -301,25 +324,32 @@ PipeSet ends
 				invoke TransparentBlt, hdcBuffer, 444, 50, 313, 333, hdcMem, 0, 0, 313, 333, eax
 
 				invoke  NumbToStr, score, addr buff
-				invoke TextOut, hdcBuffer, 620, 120, eax, 2
+				invoke TextOut, hdcBuffer, scoreTextX, 120, eax, 2
 
 				invoke  NumbToStr, bestScore, addr buff
-				invoke TextOut, hdcBuffer, 620, 273, eax, 2
+				invoke TextOut, hdcBuffer, bestScoreTextX, 273, eax, 2
 
 				invoke EndPath, hdcBuffer
 
 				RGB 253, 119, 90
 				invoke SetTextColor, hdcBuffer, eax
 
-				invoke CreateFont, 40, 0, 0, 0, 400, 0, 0, 0, 0, 0, 0, 2, 0, addr FontName
-				mov hFont, eax
-
-				invoke SelectObject, hdcBuffer, hFont
+				invoke SelectObject, hdcBuffer, hFontSm
+				mov hOldFont, eax
 				invoke TextOut, hdcBuffer, 600, 80, addr scoreText, 5
-				invoke TextOut, hdcBuffer, 600, 233, addr bestText, 4
+				
+				.IF displayNewBadge == 1
+					invoke TextOut, hdcBuffer, 630, 233, addr bestText, 4
+					invoke SelectObject, hdcMem, BadgeBitmap
 
+					invoke BitBlt, hdcBuffer, 535, 240, rect.right, rect.bottom, hdcMem, 0, 0, SRCCOPY
+				.ELSE
+					invoke TextOut, hdcBuffer, 600, 233, addr bestText, 4
+				.ENDIF
 			.ENDIF
-			invoke EndPath, hdcBuffer
+			.IF gameState != 3
+				invoke EndPath, hdcBuffer
+			.ENDIF
 
 			invoke StrokeAndFillPath, hdcBuffer
 
@@ -329,6 +359,7 @@ PipeSet ends
 			invoke SelectObject, hdcBuffer, hOldFont
 			invoke SelectObject, hdcBuffer, hbmOldBuffer
 			invoke DeleteObject, hFont
+			invoke DeleteObject, hFontSm
 			invoke DeleteObject, pen
 			invoke DeleteDC, hdcBuffer
 			invoke DeleteObject, hbmBuffer
@@ -358,9 +389,21 @@ PipeSet ends
 			mov gameState, 3
 			invoke ShowWindow, hWndRetryBtn, SW_SHOW
 
+			mov scoreTextX, 620
+			mov bestScoreTextX, 620
+
+			.IF score > 9
+				mov scoreTextX, 600
+			.ENDIF
+
+			.IF bestScore > 9
+				mov bestScoreTextX, 600
+			.ENDIF
+
 			mov eax, score
 			.IF eax > bestScore
 				mov bestScore, eax
+				mov displayNewBadge, 1
 			.ENDIF
 			ret
 		Collision endp
@@ -377,51 +420,111 @@ PipeSet ends
 
 				mov eax, MyBird.velocityY
 				add MyBird.y, eax
-
-				;sub PipeSet1.x, 4
-				;mov eax, PipeSet1.x
-				;add eax, 155
-
-				.IF eax <= leftScreenEdge
-					;mov PipeSet1.x, 1200
-
-			    	call PseudoRandom
-			    	add eax, 100
-			    	add eax, gapHeight
-			    	;mov PipeSet1.gapY, eax
-				.ENDIF
 			.ENDIF
 			ret
 		Flying endp
+
+		MoveGround proc
+			mov eax, MovingSpeed
+			sub MyGround1.startX, eax
+			sub MyGround1.endX, eax
+			sub MyGround2.startX, eax
+			sub MyGround2.endX, eax
+
+			mov eax, leftScreenEdge
+
+			.IF MyGround1.endX <= eax
+				mov MyGround1.startX, 1200
+				mov MyGround1.endX, 2400
+			.ENDIF
+
+			.IF MyGround2.endX <= eax
+				mov MyGround2.startX, 1200
+				mov MyGround2.endX, 2400
+			.ENDIF
+			ret
+		MoveGround endp
+
+		MovePipes proc
+			LOCAL maxX:DWORD
+			LOCAL gapT:DWORD
+			LOCAL gapB:DWORD
+			LOCAL gapStart:DWORD
+			LOCAL gapEnd:DWORD
+
+			mov ebx, 0
+			mov ecx, MovingSpeed
+
+			.WHILE ebx < PipesQnt
+		    	sub [PipeSetArr + ebx * 8].x, ecx
+
+		    	mov edx, [PipeSetArr + ebx * 8].x
+		    	add edx, 155
+
+		    	.IF edx <= leftScreenEdge
+		    		mov [PipeSetArr + ebx * 8].x, 1412
+
+		    		mov eax, RangeOfNumbers
+					call PseudoRandom
+			    	add eax, 100
+			    	add eax, gapHeight
+
+			    	mov [PipeSetArr + ebx * 8].gapY, eax
+			    	mov [PipeSetArr + ebx * 8].passed, 0
+		    	.ENDIF
+
+		    	mov edx, [PipeSetArr + ebx * 8].x
+		    	add edx, 155
+
+		    	.IF edx <= MyBird.x && [PipeSetArr + ebx * 8].passed == 0
+		    		mov [PipeSetArr + ebx * 8].passed, 1
+		    		add score, 1
+		    	.ENDIF
+
+		    	mov edx, [PipeSetArr + ebx * 8].gapY
+		    	mov gapB, edx
+		    	mov gapT, edx
+		    	mov edx, gapHeight
+		    	sub gapT, edx
+		    	mov edx, [PipeSetArr + ebx * 8].x
+		    	mov gapStart, edx
+		    	add edx, 155
+		    	mov gapEnd, edx
+
+		    	.IF [PipeSetArr + ebx * 8].passed == 0
+		    		mov edx, MyBird.x
+			    	mov eax, MyBird.x
+			    	add eax, MyBird.bWidth
+
+			    	.IF !(edx >= gapEnd || gapStart >= eax)
+				    	mov edx, MyBird.y
+				    	mov eax, MyBird.y
+				    	add eax, MyBird.bHeight
+
+				    	.IF !(eax < gapB && edx > gapT)
+				    		invoke Collision
+				    		.BREAK
+				    	.ENDIF
+			    	.ENDIF
+			    .ENDIF
+
+				inc ebx
+			.ENDW
+
+			ret
+		MovePipes endp
 
 		Update proc
 			;gameState = 1 - waiting for start
 			;gameState = 2 - game is running
 			;gameState = 3 - game lost
 
-			.IF gameState == 1 || gameState == 2
-				sub MyGround1.startX, 4
-				sub MyGround1.endX, 4
-				sub MyGround2.startX, 4
-				sub MyGround2.endX, 4
-
-				mov eax, leftScreenEdge
-
-				.IF MyGround1.endX <= eax
-					mov MyGround1.startX, 1200
-					mov MyGround1.endX, 2400
-				.ENDIF
-
-				.IF MyGround2.endX <= eax
-					mov MyGround2.startX, 1200
-					mov MyGround2.endX, 2400
-				.ENDIF
-
-			.ENDIF
-
 			.IF gameState == 1
+				invoke MoveGround
 				invoke WaitingAnimation
 			.ELSEIF gameState == 2
+				invoke MovePipes
+				invoke MoveGround
 				invoke Flying
 			.ELSEIF gameState == 3
 				
@@ -430,20 +533,28 @@ PipeSet ends
 			ret
 		Update endp
 
+		Restart proc
+			mov score, 0
+			mov eax, 330
+			mov MyBird.y, eax
+			mov direction, 1
+			mov gameState, 1
+			mov displayNewBadge, 0
+	    	invoke InitPipes
+			invoke ShowWindow, hWndRetryBtn, SW_HIDE
+
+			ret
+		Restart endp
+
 		WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
 			LOCAL rect:RECT
 			LOCAL hdc:HDC
 			LOCAL hdcBtn:HDC
 
 			.IF uMsg==WM_CREATE
-				invoke SetTimer, hWnd, TimerID, timerClock, NULL
-
-				invoke AddFontResourceEx, addr FontSrc, FR_PRIVATE, NULL
-
-				invoke CreateWindowEx, 0, addr ClassNameBtn, addr BtnText, WS_VISIBLE or WS_CHILD or BS_BITMAP or BS_OWNERDRAW, 535, 400, 130, 75, hWnd, NULL, hInstance, NULL
-				mov hWndRetryBtn, eax
-
-				invoke ShowWindow, hWndRetryBtn, SW_HIDE
+		    	invoke Init, hWnd
+		    	invoke InitRand
+		    	invoke InitPipes
 				ret
 		    .ELSEIF uMsg==WM_TIMER
 			    invoke GetDC, hWnd
@@ -461,17 +572,7 @@ PipeSet ends
 				mov MyBird.velocityY, eax
 				ret
 			.ELSEIF uMsg==WM_COMMAND
-				mov score, 0
-				mov eax, MyBird.startY
-				mov MyBird.y, eax
-				mov direction, 1
-				mov gameState, 1
-				;mov PipeSet1.x, 1200
-				call PseudoRandom
-		    	add eax, 100
-		    	add eax, gapHeight
-		    	;mov PipeSet1.gapY, eax
-				invoke ShowWindow, hWndRetryBtn, SW_HIDE
+				invoke Restart
 				ret
 			.ELSEIF uMsg==WM_DRAWITEM
 				invoke GetDC, hWndRetryBtn
@@ -496,7 +597,6 @@ PipeSet ends
 		DrawCustomButton proc, hdc:HDC
 			LOCAL rect:RECT
 			LOCAL br:HBRUSH
-			LOCAL BtnBitmap:HBITMAP
 			LOCAL hdcMem:HDC
 			LOCAL hdcBuffer:HDC
 			LOCAL hbmBuffer:HBITMAP
@@ -519,9 +619,6 @@ PipeSet ends
 			invoke CreateCompatibleDC, hdc
 			mov hdcMem, eax
 
-			invoke LoadImage, NULL, addr BtnBmpName, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE or LR_CREATEDIBSECTION
-			mov BtnBitmap, eax
-
 			invoke SelectObject, hdcMem, BtnBitmap
 
 			invoke BitBlt, hdcBuffer, 0, 0, 130, 75, hdcMem, 0, 0, SRCCOPY
@@ -537,24 +634,23 @@ PipeSet ends
 		DrawCustomButton endp
 
 		NumbToStr PROC uses ebx x:DWORD, buffer:DWORD
-
-		    mov     ecx, buffer
-		    mov     eax, x
-		    mov     ebx, 10
-		    add     ecx, ebx 
+		    mov ecx, buffer
+		    mov eax, x
+		    mov ebx, 10
+		    add ecx, ebx 
 		@@:
-		    xor     edx, edx
-		    div     ebx
-		    add     edx, 48             
-		    mov     BYTE PTR [ecx], dl   
-		    dec     ecx                 
-		    test    eax, eax             
-		    jnz     @b
+		    xor edx, edx
+		    div ebx
+		    add edx, 48             
+		    mov BYTE PTR [ecx], dl   
+		    dec ecx                 
+		    test eax, eax
+		    jnz @b
 
-		    inc     ecx
-		    mov     eax, ecx             
+		    inc ecx
+		    mov eax, ecx
+
 		    ret
-
 		NumbToStr ENDP
 
 		PseudoRandom PROC                       

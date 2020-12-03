@@ -1,0 +1,18 @@
+#define IDB_BACKGROUND 1000
+#define IDB_BIRD 1001
+#define IDB_GROUND 1002
+#define IDB_BUTTON 1003
+#define IDB_SCOREBOARD 1004
+#define IDB_PIPEUP 1005
+#define IDB_PIPEDOWN 1006
+#define IDB_NEWBADGE 1007
+
+8190 ICON MOVEABLE PURE LOADONCALL bird.ico
+IDB_BACKGROUND BITMAP resources\background.bmp
+IDB_BIRD BITMAP resources\bird.bmp
+IDB_GROUND BITMAP resources\ground.bmp
+IDB_BUTTON BITMAP resources\button.bmp
+IDB_SCOREBOARD BITMAP resources\scoreboard.bmp
+IDB_PIPEUP BITMAP resources\pipeup.bmp
+IDB_PIPEDOWN BITMAP resources\pipedown.bmp
+IDB_NEWBADGE BITMAP resources\newbadge.bmp
