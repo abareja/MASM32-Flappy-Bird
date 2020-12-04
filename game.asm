@@ -16,7 +16,7 @@ includelib C:\masm32\lib\masm32.lib
 
 WinMain proto :DWORD
 Update proto
-Init proto :DWORD
+Init proto
 InitRand proto
 InitPipes proto
 NumbToStr proto :DWORD, :DWORD
@@ -45,6 +45,7 @@ PipeSet struct
 PipeSet ends
 
 .const
+	ICON_ID equ 999
 	BACKGROUND_ID equ 1000
 	BIRD_ID equ 1001
 	GROUND_ID equ 1002
@@ -114,10 +115,14 @@ ENDM
 
 .code
 	start:
+		invoke InitRand
+		invoke InitPipes
+		invoke Init
+
 		invoke WinMain, hInstance
 		invoke ExitProcess, eax
 
-		Init proc hWnd:HWND
+		Init proc
 			invoke GetModuleHandle, NULL
 			mov hInstance, eax
 
@@ -145,14 +150,6 @@ ENDM
 			invoke LoadBitmap, hInstance, NEWBADGE_ID
 			mov BadgeBitmap, eax
 
-			invoke SetTimer, hWnd, TimerID, timerClock, NULL
-
-			invoke AddFontResourceEx, addr FontSrc, FR_PRIVATE, NULL
-
-			invoke CreateWindowEx, 0, addr ClassNameBtn, addr BtnText, WS_VISIBLE or WS_CHILD or BS_BITMAP or BS_OWNERDRAW, 535, 400, 130, 75, hWnd, NULL, hInstance, NULL
-			mov hWndRetryBtn, eax
-
-			invoke ShowWindow, hWndRetryBtn, SW_HIDE
 			ret
 		Init endp
 
@@ -201,7 +198,7 @@ ENDM
 			mov wc.lpszMenuName, NULL
 			mov wc.lpszClassName, offset ClassName
 
-			invoke LoadIcon, hInstance, 8190
+			invoke LoadIcon, hInstance, ICON_ID
 
 			mov wc.hIcon, eax
 			mov wc.hIconSm, eax
@@ -526,8 +523,6 @@ ENDM
 				invoke MovePipes
 				invoke MoveGround
 				invoke Flying
-			.ELSEIF gameState == 3
-				
 			.ENDIF
 
 			ret
@@ -552,9 +547,13 @@ ENDM
 			LOCAL hdcBtn:HDC
 
 			.IF uMsg==WM_CREATE
-		    	invoke Init, hWnd
-		    	invoke InitRand
-		    	invoke InitPipes
+				invoke SetTimer, hWnd, TimerID, timerClock, NULL
+
+				invoke AddFontResourceEx, addr FontSrc, FR_PRIVATE, NULL
+
+				invoke CreateWindowEx, 0, addr ClassNameBtn, addr BtnText, WS_VISIBLE or WS_CHILD or BS_BITMAP or BS_OWNERDRAW, 535, 400, 130, 75, hWnd, NULL, hInstance, NULL
+				mov hWndRetryBtn, eax
+				invoke ShowWindow, hWndRetryBtn, SW_HIDE
 				ret
 		    .ELSEIF uMsg==WM_TIMER
 			    invoke GetDC, hWnd

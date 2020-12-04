@@ -1,3 +1,4 @@
+#define IDICO_ICON 999
 #define IDB_BACKGROUND 1000
 #define IDB_BIRD 1001
 #define IDB_GROUND 1002
@@ -7,7 +8,7 @@
 #define IDB_PIPEDOWN 1006
 #define IDB_NEWBADGE 1007
 
-8190 ICON MOVEABLE PURE LOADONCALL bird.ico
+IDICO_ICON ICON MOVEABLE PURE LOADONCALL bird.ico
 IDB_BACKGROUND BITMAP resources\background.bmp
 IDB_BIRD BITMAP resources\bird.bmp
 IDB_GROUND BITMAP resources\ground.bmp
