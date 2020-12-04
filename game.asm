@@ -67,7 +67,7 @@ PipeSet ends
 	MyGround1 Ground <0, 1200>
 	MyGround2 Ground <1200, 2400>
 
-	upForce dd -15
+	upForce dd -14
 	timerClock dd 8
 	gameState db 1
 	bestScore dd 0
@@ -79,7 +79,7 @@ PipeSet ends
 	scoreText db "SCORE", 0
 	bestText db "BEST", 0
 	TimerID dd 1234
-	gapHeight dd 240
+	gapHeight dd 250
 	leftScreenEdge dd 6
 	MovingSpeed dd 6
 	PipesQnt dd 3
