@@ -490,6 +490,7 @@ ENDM
 
 		    	.IF [PipeSetArr + ebx * 8].passed == 0
 		    		mov edx, MyBird.x
+		    		add edx, 25
 			    	mov eax, MyBird.x
 			    	add eax, MyBird.bWidth
 
