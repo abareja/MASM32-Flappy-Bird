@@ -9,10 +9,10 @@ include \masm32\include\user32.inc
 includelib \masm32\lib\user32.lib
 include \masm32\include\kernel32.inc
 includelib \masm32\lib\kernel32.lib
-include C:\masm32\include\gdi32.inc 
-includelib C:\masm32\lib\gdi32.lib
-include C:\masm32\include\masm32.inc
-includelib C:\masm32\lib\masm32.lib
+include \masm32\include\gdi32.inc 
+includelib \masm32\lib\gdi32.lib
+include \masm32\include\masm32.inc
+includelib \masm32\lib\masm32.lib
 
 WinMain proto :DWORD
 Update proto
@@ -76,6 +76,7 @@ PipeSet ends
 	groundLevel dd 750
 	groundTextureLength dd 1200
 	startText db "Get Ready!", 0
+	startInfoText db "Press mouse button to start", 0
 	scoreText db "SCORE", 0
 	bestText db "BEST", 0
 	TimerID dd 1234
@@ -311,6 +312,9 @@ ENDM
 
 			.IF gameState == 1
 				invoke TextOut, hdcBuffer, 600, 100, addr startText, 10
+				invoke SelectObject, hdcBuffer, hFontSm
+				mov hOldFont, eax
+				invoke TextOut, hdcBuffer, 600, 180, addr startInfoText, 27
 			.ELSEIF gameState == 2
 				invoke  NumbToStr, score, addr buff
 				invoke TextOut, hdcBuffer, scoreTextX, 50, eax, 2
@@ -564,7 +568,7 @@ ENDM
 		    	invoke Draw, hdc, rect
 		    	invoke ReleaseDC, hWnd, hdc
 		    	ret
-			.ELSEIF uMsg==WM_CHAR || uMsg==WM_LBUTTONDOWN
+			.ELSEIF uMsg==WM_LBUTTONDOWN
 				.IF gameState == 1
 					mov gameState, 2
 				.ENDIF
