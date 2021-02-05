@@ -207,8 +207,17 @@ ENDM
 			mov wc.hCursor, eax
 			invoke RegisterClassEx, addr wc
 
-			invoke CreateWindowEx, NULL, addr ClassName, addr AppName, WS_OVERLAPPED or WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX or WS_VISIBLE or WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 1206, 900, NULL, NULL, hInst, NULL
-
+			invoke CreateWindowEx, NULL, \
+								addr ClassName, \
+								addr AppName, \
+								WS_OVERLAPPED or WS_CAPTION or \
+								WS_SYSMENU or WS_MINIMIZEBOX or \
+								WS_VISIBLE or WS_CLIPCHILDREN, \
+								CW_USEDEFAULT, \
+								CW_USEDEFAULT, \
+								1206, 900, \
+								NULL, NULL, \
+								hInst, NULL
 			mov hWnd, eax
 			invoke ShowWindow, hWnd, SW_SHOWNORMAL
 			invoke UpdateWindow, hWnd
@@ -556,7 +565,14 @@ ENDM
 
 				invoke AddFontResourceEx, addr FontSrc, FR_PRIVATE, NULL
 
-				invoke CreateWindowEx, 0, addr ClassNameBtn, addr BtnText, WS_VISIBLE or WS_CHILD or BS_BITMAP or BS_OWNERDRAW, 535, 400, 130, 75, hWnd, NULL, hInstance, NULL
+				invoke CreateWindowEx, 0, \
+				 						addr ClassNameBtn, \
+				 						addr BtnText, \
+				 						WS_VISIBLE or WS_CHILD or \
+				 						BS_BITMAP or BS_OWNERDRAW, \
+				 						535, 400, 130, 75, \
+				 						hWnd, NULL, hInstance, \
+				 						NULL
 				mov hWndRetryBtn, eax
 				invoke ShowWindow, hWndRetryBtn, SW_HIDE
 				ret
